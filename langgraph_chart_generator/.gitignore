@@ -1,0 +1,12 @@
+# Environment
+.venv/
+.env
+
+# Temporary files
+__pycache__/
+temp_*.csv
+*.pyc
+
+# Generated output
+downloads/
+uploads/ 
