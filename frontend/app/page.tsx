@@ -5,7 +5,6 @@ import { ChatProvider } from '@/contexts/ChatContext';
 import { useChatContext } from '@/contexts/ChatContext';
 import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
-import ChatInput from '@/components/ChatInput';
 
 function MainContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -30,7 +29,6 @@ function MainContent() {
         <Sidebar isOpen={isSidebarOpen} onToggle={toggleSidebar} />
         <div className="flex-1 flex flex-col min-w-0">
           <ChatArea isSidebarOpen={isSidebarOpen} onToggleSidebar={toggleSidebar} />
-          {showBottomInput && <ChatInput />}
         </div>
       </div>
       

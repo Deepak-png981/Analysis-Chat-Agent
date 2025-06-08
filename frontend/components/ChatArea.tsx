@@ -275,15 +275,8 @@ export default function ChatArea({ isSidebarOpen, onToggleSidebar }: ChatAreaPro
     );
   }
 
-  // Normal chat view with messages
   return (
     <div className="flex-1 flex flex-col bg-gradient-dark relative overflow-hidden">
-      {/* Background Effects */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/3 w-96 h-96 bg-accent-blue/5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 right-1/3 w-80 h-80 bg-accent-purple/5 rounded-full blur-2xl"></div>
-      </div>
-      
       {/* Header */}
       <div className="border-b border-dark-border/50 bg-dark-surface/30 backdrop-blur-xl p-6 relative z-10">
         <div className="flex items-center gap-4">
@@ -303,30 +296,26 @@ export default function ChatArea({ isSidebarOpen, onToggleSidebar }: ChatAreaPro
           </div>
           <div className="flex-1">
             <h1 className="text-dark-text font-bold text-lg">{currentSession.title}</h1>
-            {currentSession.fileUploaded ? (
-              <div className="flex items-center gap-2 mt-1">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                <p className="text-dark-text-secondary text-sm">
-                  📎 File uploaded: <span className="text-accent-blue font-medium">{currentSession.fileName}</span>
-                </p>
-              </div>
-            ) : (
-              <p className="text-dark-text-secondary text-sm mt-1">No file uploaded yet</p>
-            )}
-          </div>
-          <div className="text-right">
-            <div className="text-dark-text-secondary text-xs">Messages</div>
-            <div className="text-accent-blue font-bold text-lg">{currentSession.messages.length}</div>
+            <p className="text-dark-text-secondary text-sm mt-1">
+              {currentSession.messages.length} messages
+            </p>
           </div>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin relative z-10">
-        <div>
+      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+        <div className="max-w-5xl mx-auto w-full">
           {currentSession.messages.map((message, index) => (
             <MessageComponent key={message.id} message={message} index={index} />
           ))}
+        </div>
+      </div>
+
+      {/* Input Area */}
+      <div className="p-4 border-t border-dark-border/50 bg-dark-surface/20">
+        <div className="max-w-5xl mx-auto w-full">
+          <ChatInput />
         </div>
       </div>
     </div>

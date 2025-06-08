@@ -29,7 +29,17 @@ export const saveSessions = (sessions: ChatSession[]): void => {
   if (typeof window === 'undefined') return;
   
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    // To prevent race conditions and accidental overwrites during page reloads,
+    // we get the latest version from storage first.
+    const stored = localStorage.getItem(STORAGE_KEY);
+    const storedSessions = stored ? JSON.parse(stored) : [];
+
+    // Simple merge: This is a basic approach. A more complex app might need a smarter merge strategy.
+    // For this app, we assume the incoming `sessions` array is the most current source of truth,
+    // but this prevents writing an empty array over existing data if the state is temporarily empty on unload.
+    if (sessions.length > 0 || storedSessions.length === 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    }
   } catch (error) {
     console.error('Error saving sessions:', error);
   }

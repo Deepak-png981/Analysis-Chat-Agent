@@ -31,6 +31,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     
     if (loadedSessions.length > 0) {
       setCurrentSessionId(loadedSessions[0].id);
+    } else {
+        createNewSession(true);
     }
   }, []);
 
@@ -38,7 +40,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     saveSessions(sessions);
   }, [sessions]);
 
-  const createNewSession = () => {
+  const createNewSession = (switch_to_new = true) => {
     const newSession: ChatSession = {
       id: uuidv4(),
       title: 'New Chat',
@@ -48,7 +50,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     };
 
     setSessions(prev => [newSession, ...prev]);
-    setCurrentSessionId(newSession.id);
+    if(switch_to_new){
+        setCurrentSessionId(newSession.id);
+    }
   };
 
   const switchSession = (sessionId: string) => {
@@ -66,10 +70,36 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     );
   };
 
+  const deleteSession = (sessionId: string) => {
+    setSessions(prev => {
+      const remainingSessions = prev.filter(session => session.id !== sessionId);
+
+      if (currentSessionId === sessionId) {
+        if (remainingSessions.length > 0) {
+          setCurrentSessionId(remainingSessions[0].id);
+        } else {
+          createNewSession(true);
+        }
+      }
+      return remainingSessions;
+    });
+  };
+
   const sendMessage = async (content: string, file?: File) => {
-    if (!currentSessionId) {
-      createNewSession();
-      return;
+    let activeSessionId = currentSessionId;
+    
+    if (!activeSessionId) {
+        const newSessionId = uuidv4();
+        const newSession: ChatSession = {
+            id: newSessionId,
+            title: 'New Chat',
+            messages: [],
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        };
+        setSessions(prev => [newSession, ...prev]);
+        activeSessionId = newSessionId;
+        setCurrentSessionId(newSessionId);
     }
 
     setIsLoading(true);
@@ -81,37 +111,50 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       timestamp: new Date(),
     };
 
-    // Add user message immediately
+    const sessionIndex = sessions.findIndex(s => s.id === activeSessionId);
+    if (sessionIndex === -1) {
+      console.error("Session not found");
+      setIsLoading(false);
+      return;
+    }
+    const currentSession = sessions[sessionIndex];
+    const newMessages = [...currentSession.messages, userMessage];
+
+    // Add user message immediately and reset clarification
     setSessions(prev => 
       prev.map(session => 
-        session.id === currentSessionId
+        session.id === activeSessionId
           ? {
               ...session,
-              messages: [...session.messages, userMessage],
+              messages: newMessages,
               updatedAt: new Date(),
-              fileUploaded: file ? true : session.fileUploaded,
-              fileName: file ? file.name : session.fileName,
+              clarificationNeeded: false, // Reset clarification flag on new user message
+              // If a file is being sent with this message, mark it in the session
+              ...(file && { fileUploaded: true, fileName: file.name }),
             }
           : session
       )
     );
 
     // Update title if it's the first message
-    const currentSession = sessions.find(s => s.id === currentSessionId);
-    if (currentSession && currentSession.messages.length === 0) {
-      updateSessionTitle(currentSessionId, content);
+    if (currentSession.messages.length === 0) {
+      updateSessionTitle(activeSessionId, content);
     }
 
     try {
-      // Prepare state for follow-up requests
       let stateJson: string | undefined;
-      if (currentSession && currentSession.messages.length > 0) {
+
+      // Only prepare state_json for follow-up requests that are NOT sending a new file.
+      if (!file) {
         const sessionState = {
-          file_path: currentSession.fileUploaded ? `/uploads/${currentSession.fileName}` : undefined,
-          chat_history: currentSession.messages.map(msg => [msg.role, msg.content] as [string, string]),
+            file_path: currentSession.fileUploaded ? `uploads/${currentSession.fileName}` : undefined,
+            chat_history: newMessages.map(msg => [msg.role, msg.content] as [string, string]),
+            clarification_needed: currentSession.clarificationNeeded || false,
         };
         stateJson = JSON.stringify(sessionState);
       }
+
+      console.log("Sending state to backend:", stateJson);
 
       const response: GraphStateResponse = await sendChatMessage(content, file, stateJson);
 
@@ -124,13 +167,17 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         error: response.error,
       };
 
+      // Update the session with the assistant's message and the file_path from the backend
       setSessions(prev => 
         prev.map(session => 
-          session.id === currentSessionId
+          session.id === activeSessionId
             ? {
                 ...session,
-                messages: [...session.messages, assistantMessage],
+                messages: [...newMessages, assistantMessage],
                 updatedAt: new Date(),
+                // If the backend returns a file_path, it means a file is now associated with this session.
+                ...(response.file_path && { fileUploaded: true, fileName: response.file_path.split(/[\\/]/).pop() }),
+                clarificationNeeded: response.clarification_needed,
               }
             : session
         )
@@ -147,10 +194,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
       setSessions(prev => 
         prev.map(session => 
-          session.id === currentSessionId
+          session.id === activeSessionId
             ? {
                 ...session,
-                messages: [...session.messages, errorMessage],
+                messages: [...newMessages, errorMessage],
                 updatedAt: new Date(),
               }
             : session
@@ -168,6 +215,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     switchSession,
     sendMessage,
     isLoading,
+    deleteSession,
   };
 
   return (

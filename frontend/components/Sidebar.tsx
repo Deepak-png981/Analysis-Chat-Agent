@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus, MessageSquare, Sparkles, FileText, Clock, ChevronLeft } from 'lucide-react';
+import { Plus, MessageSquare, Sparkles, FileText, Clock, ChevronLeft, Trash2 } from 'lucide-react';
 import { useChatContext } from '@/contexts/ChatContext';
 
 interface SidebarProps {
@@ -9,7 +9,14 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
-  const { sessions, currentSessionId, createNewSession, switchSession } = useChatContext();
+  const { sessions, currentSessionId, createNewSession, switchSession, deleteSession } = useChatContext();
+
+  const handleDelete = (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation(); // Prevent the session from being switched when deleting
+    if (window.confirm('Are you sure you want to delete this chat?')) {
+      deleteSession(sessionId);
+    }
+  };
 
   return (
     <>
@@ -78,7 +85,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
               {sessions.map((session, index) => (
                 <div
                   key={session.id}
-                  className="slide-in card-hover"
+                  className="slide-in card-hover group/item relative"
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
                   <button
@@ -133,6 +140,14 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                         <div className="w-2 h-2 bg-accent-cyan rounded-full animate-pulse"></div>
                       )}
                     </div>
+                  </button>
+                  {/* Delete Button */}
+                  <button
+                    onClick={(e) => handleDelete(e, session.id)}
+                    className="absolute top-1/2 -translate-y-1/2 right-4 z-10 w-8 h-8 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-400 hover:text-white transition-all duration-300 flex items-center justify-center opacity-0 group-hover/item:opacity-100"
+                    title="Delete chat"
+                  >
+                    <Trash2 size={16} />
                   </button>
                 </div>
               ))}

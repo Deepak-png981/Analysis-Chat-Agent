@@ -15,6 +15,7 @@ export interface ChatSession {
   updatedAt: Date;
   fileUploaded?: boolean;
   fileName?: string;
+  clarificationNeeded?: boolean;
 }
 
 export interface GraphStateResponse {
@@ -35,4 +36,5 @@ export interface ChatContextType {
   switchSession: (sessionId: string) => void;
   sendMessage: (content: string, file?: File) => Promise<void>;
   isLoading: boolean;
+  deleteSession: (sessionId: string) => void;
 } 

@@ -42,11 +42,13 @@ def clarification_node(state: GraphState):
     logger.info("---CLARIFICATION NODE---")
     
     file_provided = state.get("file_path") and os.path.exists(state["file_path"])
+    chat_history = state.get("chat_history", [])
+    formatted_history = "\n".join([f"{role}: {content}" for role, content in chat_history])
 
     system_prompt = prompt_factory.get_prompt("clarification_system")
     prompt_template = ChatPromptTemplate.from_messages([
         ("system", system_prompt),
-        ("human", "User Prompt: {prompt}\nFile Provided: {file_provided}"),
+        ("human", "Here is the conversation history:\n{history}\n\n---\n\nUser Prompt: {prompt}\nFile Provided: {file_provided}"),
     ])
     
     llm = ChatOpenAI(model="gpt-4o", temperature=0)
@@ -64,6 +66,7 @@ def clarification_node(state: GraphState):
         result = chain.invoke({
             "prompt": state["prompt"],
             "file_provided": file_provided,
+            "history": formatted_history,
         })
         
         action = result.get("action")
@@ -75,6 +78,8 @@ def clarification_node(state: GraphState):
             response_payload["clarification_needed"] = True
             response_payload["clarification_question"] = result.get("question")
             response_payload["generation"] = result.get("question")
+        elif action == "general_response":
+            response_payload["generation"] = result.get("response")
         elif action != "generate_code":
             logger.error(f"Unexpected action from LLM: {action}")
             response_payload["error"] = f"Unexpected action: {action}"
@@ -85,6 +90,14 @@ def clarification_node(state: GraphState):
         response_payload["generation"] = "I'm sorry, I had trouble understanding your request. Could you please rephrase it?"
 
     return response_payload
+
+def general_response_node(state: GraphState) -> GraphState:
+    """
+    Handles general conversation, providing a friendly response without technical actions.
+    """
+    logger.info("---HANDLING GENERAL RESPONSE---")
+    # The generation is already set by the clarification_node
+    return {}
 
 def code_generation_node(state: GraphState):
     logger.info("---GENERATING CODE---")
@@ -174,6 +187,10 @@ def should_clarify(state: GraphState) -> str:
         logger.info("Clarification is needed, ending to ask user.")
         return "end_for_clarification"
 
+    # Check if this is a general response and route accordingly
+    if "action" in state and state["action"] == "general_response":
+        return "general_response"
+
     logger.info("Proceeding to code generation.")
     return "generate_code"
 
@@ -202,15 +219,22 @@ def build_graph():
     workflow.add_node("clarify_check", clarification_node)
     workflow.add_node("generate_code", code_generation_node)
     workflow.add_node("execute_code", code_execution_node)
+    workflow.add_node("general_response", general_response_node)
     
     workflow.set_entry_point("start")
     workflow.add_edge("start", "clarify_check")
     workflow.add_conditional_edges(
         "clarify_check",
         should_clarify,
-        {"end_for_clarification": END, "generate_code": "generate_code", "end": END},
+        {
+            "end_for_clarification": END, 
+            "generate_code": "generate_code", 
+            "end": END,
+            "general_response": "general_response"
+        },
     )
     workflow.add_edge("generate_code", "execute_code")
+    workflow.add_edge("general_response", END)
     workflow.add_conditional_edges(
         "execute_code",
         should_retry,

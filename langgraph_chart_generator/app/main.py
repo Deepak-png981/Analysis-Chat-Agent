@@ -1,4 +1,5 @@
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
 import base64
@@ -12,6 +13,21 @@ from typing import Optional, List, Tuple
 load_dotenv()
 
 app = FastAPI()
+
+# CORS Middleware Configuration
+# This allows the frontend (running on localhost:3000) to communicate with the backend.
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Setup logging and directories
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -51,6 +67,7 @@ async def create_chart(
     current_state = {}
     if state_json:
         logger.info("Follow-up request detected.")
+        logger.info(f"Received state_json: {state_json}")
         try:
             current_state = json.loads(state_json)
             if not current_state.get("file_path") or not os.path.exists(current_state.get("file_path")):
@@ -65,7 +82,6 @@ async def create_chart(
         if not allowed_file(file.filename):
             raise HTTPException(status_code=400, detail="Invalid file type.")
         
-        # Use a more secure way to save files in a real app
         file_path = os.path.join("uploads", file.filename)
         with open(file_path, "wb") as buffer:
             buffer.write(await file.read())
@@ -84,7 +100,6 @@ async def create_chart(
 
         if final_state.get("images"):
             try:
-                # Ensure image data is a single base64 string
                 img_data_list = final_state["images"]
                 if img_data_list and isinstance(img_data_list[0], str):
                     img_data = base64.b64decode(img_data_list[0])
@@ -96,11 +111,9 @@ async def create_chart(
                     logger.info(f"Image saved successfully to {image_path}")
             except Exception as e:
                 logger.error(f"Failed to save image: {e}")
-                # Don't overwrite the main error, but log this one.
-        
-        # Create a complete default state to merge with the final state
+
         default_state = GraphState(
-            file_path=None,
+            file_path=current_state.get("file_path"),
             prompt=prompt,
             chat_history=[],
             clarification_needed=False,
@@ -111,16 +124,13 @@ async def create_chart(
             retry_count=0
         )
         
-        # Merge final_state into default_state
         complete_state = {**default_state, **final_state}
 
         logger.info(f"Returning final state: {complete_state}")
-        # Ensure the response matches the Pydantic model
         return GraphStateResponse(**complete_state)
     
     except Exception as e:
         logger.error(f"Error invoking graph or processing request: {e}", exc_info=True)
-        # Return a structured error response that the frontend can handle
         return GraphStateResponse(
             file_path=current_state.get("file_path"),
             prompt=prompt,
