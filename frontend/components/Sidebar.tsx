@@ -40,7 +40,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
             </div>
             <div className="flex-1">
               <span className="text-dark-text font-bold text-lg">AI Chat</span>
-              <p className="text-dark-text-secondary text-xs">Interface v2.0</p>
+              {/* <p className="text-dark-text-secondary text-xs">Interface v2.0</p> */}
             </div>
             {/* Collapse Button */}
             <button
