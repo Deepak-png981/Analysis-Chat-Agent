@@ -28,8 +28,12 @@ app.add_middleware(
 # Setup logging and directories
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-os.makedirs("uploads", exist_ok=True)
-os.makedirs("downloads", exist_ok=True)
+
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads")
+DOWNLOAD_DIR = os.getenv("DOWNLOAD_DIR", "downloads")
+
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 
 ALLOWED_EXTENSIONS = {'csv', 'json', 'xls', 'xlsx'}
@@ -78,7 +82,7 @@ async def create_chart(
         if not allowed_file(file.filename):
             raise HTTPException(status_code=400, detail="Invalid file type.")
         
-        file_path = os.path.join("uploads", file.filename)
+        file_path = os.path.join(UPLOAD_DIR, file.filename)
         with open(file_path, "wb") as buffer:
             buffer.write(await file.read())
         logger.info(f"File saved to {file_path}")
@@ -101,7 +105,7 @@ async def create_chart(
                     img_data = base64.b64decode(img_data_list[0])
                     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
                     filename = f"chart_{timestamp}.png"
-                    image_path = os.path.join("downloads", filename)
+                    image_path = os.path.join(DOWNLOAD_DIR, filename)
                     with open(image_path, "wb") as f:
                         f.write(img_data)
                     logger.info(f"Image saved successfully to {image_path}")
