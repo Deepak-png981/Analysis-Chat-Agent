@@ -6,9 +6,7 @@ This interactive application empowers you to generate insightful charts from you
 
 Check out this short video demonstrating a full conversation, from uploading a file to generating a chart:
 
-<video width="320" height="240" controls>
-  <source src="./asset/conversation.mp4" type="video/mp4">
-</video>
+[![Watch the demo](./asset/conversation.gif)](./asset/conversation.mp4)
 
 ## Key Features
 

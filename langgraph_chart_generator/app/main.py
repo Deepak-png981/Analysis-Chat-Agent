@@ -14,16 +14,12 @@ load_dotenv()
 
 app = FastAPI()
 
-# CORS Middleware Configuration
-# This allows the frontend (running on localhost:3000) to communicate with the backend.
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
+# In production, this should be set to the frontend's URL.
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
